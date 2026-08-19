@@ -1,0 +1,71 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Recursive CTE" id="cte1">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Recursive CTE Identifies the Root Blocker in a Blocking Chain" style="text;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Background container -->
+        <mxCell id="bg" value="" style="rounded=1;whiteSpace=wrap;fillColor=#F9F9F9;strokeColor=#E0E0E0;strokeWidth=1;arcSize=5;" vertex="1" parent="1">
+          <mxGeometry x="60" y="70" width="1080" height="420" as="geometry" />
+        </mxCell>
+
+        <!-- Section label -->
+        <mxCell id="section" value="sys.dm_exec_requests — Blocking Chain Example" style="text;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontStyle=1;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Session A -->
+        <mxCell id="A" value="Session A&#10;&#10;ROOT BLOCKER&#10;blocking_session_id = 0&#10;status: sleeping&#10;wait_time: 0 ms" style="rounded=1;whiteSpace=wrap;fillColor=#FFCDD2;strokeColor=#C62828;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#C62828;align=center;verticalAlign=middle;arcSize=15;shadow=1;spacingTop=5;spacingBottom=5;" vertex="1" parent="1">
+          <mxGeometry x="120" y="200" width="200" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Session B -->
+        <mxCell id="B" value="Session B&#10;&#10;BLOCKED&#10;blocking_session_id = A&#10;status: suspended&#10;wait_time: 45000 ms" style="rounded=1;whiteSpace=wrap;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#E65100;align=center;verticalAlign=middle;arcSize=15;shadow=1;spacingTop=5;spacingBottom=5;" vertex="1" parent="1">
+          <mxGeometry x="470" y="130" width="200" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Session C -->
+        <mxCell id="C" value="Session C&#10;&#10;BLOCKED&#10;blocking_session_id = A&#10;status: suspended&#10;wait_time: 32000 ms" style="rounded=1;whiteSpace=wrap;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#E65100;align=center;verticalAlign=middle;arcSize=15;shadow=1;spacingTop=5;spacingBottom=5;" vertex="1" parent="1">
+          <mxGeometry x="470" y="310" width="200" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Session D -->
+        <mxCell id="D" value="Session D&#10;&#10;BLOCKED&#10;blocking_session_id = C&#10;status: suspended&#10;wait_time: 28000 ms" style="rounded=1;whiteSpace=wrap;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1565C0;align=center;verticalAlign=middle;arcSize=15;shadow=1;spacingTop=5;spacingBottom=5;" vertex="1" parent="1">
+          <mxGeometry x="820" y="310" width="200" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- A blocks B -->
+        <mxCell id="ab" value="BLOCKS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#C62828;strokeWidth=2;fontSize=10;fontStyle=1;fontColor=#C62828;labelBackgroundColor=#FFFFFF;" edge="1" source="A" target="B" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- A blocks C -->
+        <mxCell id="ac" value="BLOCKS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#C62828;strokeWidth=2;fontSize=10;fontStyle=1;fontColor=#C62828;labelBackgroundColor=#FFFFFF;" edge="1" source="A" target="C" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- C blocks D -->
+        <mxCell id="cd" value="BLOCKS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#E65100;strokeWidth=2;fontSize=10;fontStyle=1;fontColor=#E65100;labelBackgroundColor=#FFFFFF;" edge="1" source="C" target="D" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- CTE trace: D back to A -->
+        <mxCell id="cte" value="Recursive CTE traces chain to root" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#1565C0;strokeWidth=3;dashed=1;dashPattern=10 5;fontSize=11;fontStyle=1;fontColor=#1565C0;labelBackgroundColor=#FFFFFF;" edge="1" source="D" target="A" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="920" y="510" />
+              <mxPoint x="220" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

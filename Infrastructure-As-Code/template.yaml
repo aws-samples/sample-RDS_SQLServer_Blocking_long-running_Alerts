@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless blocking and long-running query alerts for Amazon RDS for SQL Server.
+  Deploys a scheduled AWS Lambda function (pytds) that queries DMVs, publishes
+  custom Amazon CloudWatch metrics, raises CloudWatch alarms, and sends
+  HTML email alerts through Amazon SES.
+
+Parameters:
+  RdsEndpoint:
+    Type: String
+    Description: Amazon RDS for SQL Server endpoint (host name).
+  RdsSecretArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret holding {"username","password"}.
+  DbIdentifier:
+    Type: String
+    Default: my-rds-instance
+    Description: RDS instance identifier used as the CloudWatch metric dimension.
+  VpcSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnets (with NAT route) for the Lambda function.
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security group(s) allowing outbound TCP 1433 to the RDS instance.
+  BlockingThresholdSeconds:
+    Type: Number
+    Default: 30
+    Description: Alert when a session is blocked longer than this (seconds).
+  LongRunningThresholdSeconds:
+    Type: Number
+    Default: 300
+    Description: Alert when a query runs longer than this (seconds).
+  SesSender:
+    Type: String
+    Default: ""
+    Description: Verified Amazon SES sender email address.
+  SesRecipient:
+    Type: String
+    Default: ""
+    Description: Alert recipient email address.
+  ScheduleExpression:
+    Type: String
+    Default: rate(1 minute)
+    Description: EventBridge schedule for the check.
+
+Resources:
+  BlockingCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rds-blocking-check
+      Handler: lambda_function.handler
+      Runtime: python3.12
+      CodeUri: ../src/
+      MemorySize: 256
+      Timeout: 60
+      Description: Detects SQL Server blocking chains and long-running queries.
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref SecurityGroupIds
+      Environment:
+        Variables:
+          RDS_ENDPOINT: !Ref RdsEndpoint
+          RDS_SECRET_ARN: !Ref RdsSecretArn
+          DB_IDENTIFIER: !Ref DbIdentifier
+          BLOCKING_THRESHOLD_SECONDS: !Ref BlockingThresholdSeconds
+          LONG_RUNNING_THRESHOLD_SECONDS: !Ref LongRunningThresholdSeconds
+          SES_SENDER: !Ref SesSender
+          SES_RECIPIENT: !Ref SesRecipient
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Sid: ReadRdsSecret
+              Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Ref RdsSecretArn
+            - Sid: PublishMetrics
+              Effect: Allow
+              Action: cloudwatch:PutMetricData
+              Resource: "*"
+              Condition:
+                StringEquals:
+                  cloudwatch:namespace: RDS/SQLServer/Blocking
+            - Sid: SendEmail
+              Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+      Events:
+        MinuteSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Name: rds-blocking-check-schedule
+            Enabled: true
+
+  BlockingDetectedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: RDS-SQLServer-Blocking-Detected
+      Namespace: RDS/SQLServer/Blocking
+      MetricName: BlockedSessionCount
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DbIdentifier
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+  LongRunningDetectedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: RDS-SQLServer-LongRunningQuery-Detected
+      Namespace: RDS/SQLServer/Blocking
+      MetricName: LongRunningQueryCount
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref DbIdentifier
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  FunctionArn:
+    Description: ARN of the blocking-check Lambda function.
+    Value: !GetAtt BlockingCheckFunction.Arn
+  BlockingAlarmName:
+    Description: CloudWatch alarm for detected blocking.
+    Value: !Ref BlockingDetectedAlarm
+  LongRunningAlarmName:
+    Description: CloudWatch alarm for detected long-running queries.
+    Value: !Ref LongRunningDetectedAlarm

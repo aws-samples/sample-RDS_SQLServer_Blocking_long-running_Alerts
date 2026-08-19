@@ -1,0 +1,11 @@
+# Runtime dependency for the Lambda function.
+# python-tds is a pure-Python TDS implementation (imported as `pytds`),
+# so it packages cleanly into a Lambda ZIP with no ODBC driver or C build.
+python-tds>=1.15.0
+
+# boto3 is provided by the AWS Lambda Python 3.12 runtime and does not
+# need to be bundled; it is listed here for local development/testing only.
+# boto3>=1.34.0
+
+# Test-only dependencies:
+# pytest>=8.0.0
