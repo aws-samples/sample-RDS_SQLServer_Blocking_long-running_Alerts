@@ -1,0 +1,18 @@
+# GitLab CI pipeline: run the Lambda unit tests on every push / merge request.
+# The unit tests stub boto3 and pytds, so no AWS credentials or SQL Server
+# connection are required.
+
+stages:
+  - test
+
+unit-tests:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install pytest
+  script:
+    - python -m pytest tests/unit -v
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
