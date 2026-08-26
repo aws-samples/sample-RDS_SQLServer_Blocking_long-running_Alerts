@@ -8,7 +8,7 @@ information to effectively respond to your bug report or contribution.
 
 ## Reporting Bugs/Feature Requests
 
-We welcome you to use the GitLab issue tracker to report bugs or suggest features.
+We welcome you to use the GitHub issue tracker to report bugs or suggest features.
 
 When filing an issue, please check existing open, or recently closed, issues to make sure somebody else hasn't already
 reported the issue. Please try to include as much information as you can. Details like the following are incredibly useful:

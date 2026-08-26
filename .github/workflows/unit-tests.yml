@@ -1,0 +1,29 @@
+# GitHub Actions: run the Lambda unit tests on every push and pull request.
+# The unit tests stub boto3 and pytds, so no AWS credentials or SQL Server
+# connection are required.
+name: unit-tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run unit tests
+        run: python -m pytest tests/unit -v
