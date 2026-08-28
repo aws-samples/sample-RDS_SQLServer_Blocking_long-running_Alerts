@@ -207,16 +207,45 @@ def handler(event, context):
 
     credentials = get_credentials(secret_arn)
 
+    # ----------------------------------------------------------------------- #
+    # Transport encryption (TLS) for data in transit  (Finding: CWE-319).
+    #
+    # How pytds handles TLS: encryption is negotiated ONLY when a trusted CA
+    # bundle is supplied via `cafile=`. With `cafile` set, pytds validates the
+    # server certificate (validate_host=True by default), which both encrypts
+    # the connection and prevents man-in-the-middle attacks. Enabling TLS in
+    # pytds also requires the pyOpenSSL extra: install `python-tds[tls]`.
+    #
+    # BLOG SAMPLE: To keep the sample self-contained (no extra CA file to
+    # download to follow along), `RDS_CA_BUNDLE_PATH` is unset by default and
+    # the connection is made without a bundled CA. This is acceptable ONLY for
+    # a demo in a private VPC/subnet.
+    #
+    # PRODUCTION: Package the Amazon RDS CA bundle with the function and set
+    # the RDS_CA_BUNDLE_PATH env var to its path, e.g.
+    #     RDS_CA_BUNDLE_PATH=/var/task/rds-combined-ca-bundle.pem
+    # and add `python-tds[tls]` to the deployment package. Also enforce
+    # `rds.force_ssl` on the DB parameter group so the server itself REJECTS
+    # any unencrypted connection. See:
+    #   https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/SQLServer.Concepts.General.SSL.Using.html
+    # ----------------------------------------------------------------------- #
+    rds_ca_bundle = os.environ.get("RDS_CA_BUNDLE_PATH", "")
+    connect_kwargs = {
+        "user": credentials["username"],
+        "password": credentials["password"],
+        "database": "master",
+        "port": 1433,
+        "login_timeout": 10,
+        "timeout": 15,
+    }
+    if rds_ca_bundle:
+        # Production path: TLS with full server-certificate validation.
+        # (validate_host defaults to True in pytds; set explicitly for clarity.)
+        connect_kwargs["cafile"] = rds_ca_bundle
+        connect_kwargs["validate_host"] = True
+
     try:
-        with pytds.connect(
-            server,
-            user=credentials["username"],
-            password=credentials["password"],
-            database="master",
-            port=1433,
-            login_timeout=10,
-            timeout=15,
-        ) as conn:
+        with pytds.connect(server, **connect_kwargs) as conn:
             cursor = conn.cursor()
             cursor.execute(BLOCKING_QUERY, (blocking_threshold * 1000,))
             blocked_rows = _rows_as_dicts(cursor)

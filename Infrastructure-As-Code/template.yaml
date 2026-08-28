@@ -35,6 +35,24 @@ Parameters:
     Type: String
     Default: ""
     Description: Verified Amazon SES sender email address.
+  SesSenderIdentityArn:
+    Type: String
+    Default: ""
+    Description: >
+      ARN of the verified Amazon SES identity used as the sender
+      (e.g. arn:aws:ses:REGION:ACCOUNT:identity/alerts@example.com or
+      .../identity/example.com). When provided, the Lambda's ses:SendEmail
+      permission is scoped to this identity instead of "*". Leave empty for
+      the blog default.
+  RdsCaBundlePath:
+    Type: String
+    Default: ""
+    Description: >
+      Optional path (inside the deployment package) to the Amazon RDS CA
+      bundle, e.g. /var/task/rds-combined-ca-bundle.pem. When set, the
+      function enforces TLS with server-certificate validation. Requires the
+      python-tds[tls] (pyOpenSSL) extra in the package. Leave empty for the
+      blog default.
   SesRecipient:
     Type: String
     Default: ""
@@ -43,6 +61,11 @@ Parameters:
     Type: String
     Default: rate(1 minute)
     Description: EventBridge schedule for the check.
+
+Conditions:
+  # When a specific SES sender identity ARN is supplied, scope the SES
+  # send permission to it; otherwise fall back to "*" (blog default).
+  HasSesSenderIdentityArn: !Not [!Equals [!Ref SesSenderIdentityArn, ""]]
 
 Resources:
   BlockingCheckFunction:
@@ -67,6 +90,7 @@ Resources:
           LONG_RUNNING_THRESHOLD_SECONDS: !Ref LongRunningThresholdSeconds
           SES_SENDER: !Ref SesSender
           SES_RECIPIENT: !Ref SesRecipient
+          RDS_CA_BUNDLE_PATH: !Ref RdsCaBundlePath
       Policies:
         - AWSLambdaVPCAccessExecutionRole
         - Statement:
@@ -81,12 +105,25 @@ Resources:
               Condition:
                 StringEquals:
                   cloudwatch:namespace: RDS/SQLServer/Blocking
+            # SES send permission  (Finding: CWE-250, least privilege).
+            #
+            # BLOG SAMPLE: With no SesSenderIdentityArn supplied, Resource
+            # falls back to "*". SES send actions do not support many resource
+            # types, so "*" is a common quick-start default for a demo.
+            #
+            # PRODUCTION: Pass SesSenderIdentityArn (the verified sender's SES
+            # identity ARN). The permission is then scoped to that identity so
+            # the function can only send *from* the intended address/domain.
+            # You can further restrict with a ses:FromAddress condition.
             - Sid: SendEmail
               Effect: Allow
               Action:
                 - ses:SendEmail
                 - ses:SendRawEmail
-              Resource: "*"
+              Resource: !If
+                - HasSesSenderIdentityArn
+                - !Ref SesSenderIdentityArn
+                - "*"
       Events:
         MinuteSchedule:
           Type: Schedule

@@ -124,13 +124,34 @@ schedule, and the two CloudWatch alarms.
 ### Option B — Manual (raw AWS CLI, mirrors the blog steps)
 
 **Step 1 — Store credentials in AWS Secrets Manager**
+
+> **Security note (CWE-798 / CWE-214):** Do **not** pass the password inline on
+> the command line (e.g. `--secret-string '{"username":"admin","password":"..."}'`).
+> Inline secrets are exposed in your shell history and process list. Instead,
+> write the credentials to a temporary file with restrictive permissions and
+> reference it with `file://`, then delete it.
+
 ```bash
+# Create the credentials file with owner-only permissions (never world-readable).
+umask 077
+cat > /tmp/rds-creds.json <<'JSON'
+{"username":"admin","password":"REPLACE_WITH_YOUR_PASSWORD"}
+JSON
+
 aws secretsmanager create-secret \
   --name rds-sqlserver-blocking-creds \
   --description "Credentials for Amazon RDS for SQL Server blocking monitor" \
-  --secret-string '{"username":"admin","password":"YourPassword"}' \
+  --secret-string file:///tmp/rds-creds.json \
   --region eu-west-2
+
+# Remove the temporary credentials file immediately afterward.
+rm -f /tmp/rds-creds.json
 ```
+
+> Prefer a strong, unique password (or manage it with an
+> [AWS Secrets Manager rotation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html)).
+> In production, create the secret through infrastructure-as-code or a
+> controlled pipeline rather than a developer workstation.
 
 **Step 2 — Verify email addresses in Amazon SES**
 ```bash
