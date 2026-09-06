@@ -26,7 +26,7 @@ FUNCTION_NAME="rds-blocking-check"
 RULE_NAME="rds-blocking-check-schedule"
 ROLE_NAME="rds-blocking-check-lambda-role"
 DB_IDENTIFIER="my-rds-instance"
-BLOCKING_THRESHOLD=30
+BLOCKING_THRESHOLD=60
 LONG_RUNNING_THRESHOLD=300
 ACCOUNT_ID="" ; SUBNET_IDS="" ; SG_IDS="" ; RDS_ENDPOINT="" ; RDS_SECRET_ARN=""
 SES_SENDER="" ; SES_RECIPIENT=""
